@@ -1,0 +1,31 @@
+<?
+require($_SERVER["DOCUMENT_ROOT"] . '/api/connect.api');
+require($_SERVER["DOCUMENT_ROOT"] . '/api/init.api');
+
+if (isset($_POST['user-name'])) {
+  $query = mysqli_query($Connect, "SELECT user_id, user_password, user_login FROM users WHERE user_login='".mysqli_real_escape_string($Connect, $_POST['user-name'])."' LIMIT 1");
+  $data = mysqli_fetch_assoc($query);
+
+  if($data['user_password'] === md5($_POST['user-password'])) {
+
+    $hash = md5(generateCode(10));
+
+    $insip = ", user_ip = INET_ATON('" . $_SERVER['REMOTE_ADDR'] . "')";
+
+    mysqli_query($Connect, "UPDATE users SET user_hash='" . $hash . "' " . $insip . " WHERE user_id='" . $data['user_id'] . "'");
+
+    setcookie('id', $data['user_id'], time() + 60 * 60 * 24 * 30);
+
+    setcookie('hash', $hash, time() + 60 * 60 * 24 * 30);
+
+    echo '{"status" : "success", "name" : "' . $data['user_login'] . '", "id" : "' . $data['user_id'] . '", "hash" : "' . $hash . '"}';
+
+    exit();
+
+  } else {
+
+    echo '{"status" : "error", "message" : "Неверный логин или пароль"}';
+
+  }
+}
+?>

@@ -1,0 +1,120 @@
+<?
+ini_set('display_errors','On');
+error_reporting('E_ALL');
+require($_SERVER["DOCUMENT_ROOT"] . '/api/connect.api');
+require($_SERVER["DOCUMENT_ROOT"] . '/api/init.api');
+require($_SERVER["DOCUMENT_ROOT"] . '/api/check-user.api');
+
+if ($userStatus == 'allow') {
+  preg_match_all('~(http|https)://[^(,|;*\s]+~siu', $_POST['list'], $channels);
+  $query = mysqli_query($Connect, "INSERT INTO lists (`name`, `channels_count`, `create_date`,`user`) VALUES ('".$_POST['name']."', ".count($channels[0]).", '".date('Y-m-d H:i:s')."','".intval($_COOKIE['id'])."')");
+  $list_id = mysqli_insert_id($Connect);
+  if ($query) {
+      foreach ($channels[0] as $channel) {
+        $id = explode('/', $channel);
+        if ($id[3] == 'user') {
+          $json = file_get_contents('https://www.googleapis.com/youtube/v3/channels?key=' . $key . '&part=snippet&forUsername=' . $id[4]);
+          $stat = json_decode($json, true);
+          $channelData['name'] = mb_convert_encoding($stat['items'][0]['snippet']['title'], 'utf-8');
+          $channelData['youtube_id'] = $stat['items'][0]['id'];
+          $channelData['channel_create_date'] = $stat['items'][0]['snippet']['publishedAt'];
+          $json = file_get_contents('https://www.googleapis.com/youtube/v3/channels?key=' . $key . '&part=brandingSettings&forUsername=' . $id[4]);
+          $stat = json_decode($json, true);
+          $channelData['tags'] = mb_convert_encoding($stat['items'][0]['brandingSettings']['channel']['keywords'], 'utf-8');
+          $channelData['country'] = $stat['items'][0]['brandingSettings']['channel']['country'];
+          $json = file_get_contents('https://www.googleapis.com/youtube/v3/channels?key=' . $key . '&part=statistics&forUsername=' . $id[4]);
+          $stat = json_decode($json, true);
+          $channelData['subscribers_count'] = $stat['items'][0]['statistics']['subscriberCount'];
+          $channelData['videos_count'] = $stat['items'][0]['statistics']['videoCount'];
+          $channelData['all_views_count'] = $stat['items'][0]['statistics']['viewCount'];
+          $id[4] = $channelData['youtube_id'];
+          $json = file_get_contents('https://www.googleapis.com/youtube/v3/channels?key=' . $key . '&part=contentDetails&id=' . $id[4]);
+          $stat = json_decode($json, true);
+          $uploadPlaylistId = $stat['items'][0]['contentDetails']['relatedPlaylists']['uploads'];
+          $json = file_get_contents('https://www.googleapis.com/youtube/v3/search?key=' . $key . '&part=snippet&channelId=' . $id[4] . '&type=video&order=viewcount&playlistId=' . $uploadPlaylistId);
+          $stat = json_decode($json, true);
+          $channelData['top_video_name'] = mb_convert_encoding($stat['items'][0]['snippet']['title'],'utf-8');
+          $channelData['top_video_id'] = $stat['items'][0]['id']['videoId'];
+          $json = file_get_contents('https://www.googleapis.com/youtube/v3/videos?key=' . $key . '&part=statistics&id=' . $channelData['top_video_id']);
+          $stat = json_decode($json, true);
+          $channelData['top_video_views_count'] = $stat['items'][0]['statistics']['viewCount'];
+          $json = file_get_contents('https://www.googleapis.com/youtube/v3/playlists?key=' . $key . '&part=snippet,contentDetails&channelId=' . $id[4].'&maxResults=50');
+          $stat = json_decode($json, true);
+          $channelData['playlists_count'] = $stat['pageInfo']['totalResults'];
+          $playlists = $stat['items'];
+          while ($stat['nextPageToken']) {
+            $json = file_get_contents('https://www.googleapis.com/youtube/v3/playlists?key=' . $key . '&part=snippet,contentDetails&channelId=' . $id[4].'&maxResults=50&pageToken=' . $stat['nextPageToken']);
+            $stat = json_decode($json, true);
+            $playlists = array_merge($playlists, $stat['items']);
+          }
+          foreach ($playlists as $playlist) {
+            $channelData['playlists'] .= '(' . $playlist['contentDetails']['itemCount'] . ')' . mb_convert_encoding($playlist['snippet']['title'], 'utf-8') . PHP_EOL;
+          }
+          $channelData['playlists'] = substr($channelData['playlists'], 0, -1);
+          $channelData['playlists'] = addslashes($channelData['playlists']);
+          $channelData['tags'] = addslashes($channelData['tags']);
+          $channelData['name'] = addslashes($channelData['name']);
+          $channelData['top_video_name'] = addslashes($channelData['top_video_name']);
+          $query = mysqli_query($Connect, "INSERT INTO channels (`name`, `create_date`, `youtube_id`, `subscribers_count`, `tags`, `channel_create_date`, `videos_count`, `all_views_count`, `playlists_count`, `playlists`, `country`, `top_video_name` ,`top_video_id`, `top_video_views_count`, `list`) VALUES ('" . $channelData['name'] . "', '" . date('Y-m-d H:i:s') . "', '" . $channelData['youtube_id'] . "', '" . $channelData['subscribers_count'] . "', '" . $channelData['tags'] . "' , '".$channelData['channel_create_date']."', '".$channelData['videos_count']."', '".$channelData['all_views_count']."', '".$channelData['playlists_count']."', '".$channelData['playlists']."', '".$channelData['country']."', '".$channelData['top_video_name']."', '".$channelData['top_video_id']."', '".$channelData['top_video_views_count']."' , '".$list_id."')");
+          if (!$query) $error = true;
+          unset($channelData);
+        }
+        if ($id[3] == 'channel') {
+          $json = file_get_contents('https://www.googleapis.com/youtube/v3/channels?key=' . $key . '&part=snippet&id=' . $id[4]);
+          $stat = json_decode($json, true);
+          $channelData['name'] = mb_convert_encoding($stat['items'][0]['snippet']['title'], 'utf-8');
+          $channelData['youtube_id'] = $stat['items'][0]['id'];
+          $channelData['channel_create_date'] = $stat['items'][0]['snippet']['publishedAt'];
+          $json = file_get_contents('https://www.googleapis.com/youtube/v3/channels?key=' . $key . '&part=brandingSettings&id=' . $id[4]);
+          $stat = json_decode($json, true);
+          $channelData['tags'] = mb_convert_encoding($stat['items'][0]['brandingSettings']['channel']['keywords'], 'utf-8');
+          $channelData['country'] = $stat['items'][0]['brandingSettings']['channel']['country'];
+          $json = file_get_contents('https://www.googleapis.com/youtube/v3/channels?key=' . $key . '&part=statistics&id=' . $id[4]);
+          $stat = json_decode($json, true);
+          $channelData['subscribers_count'] = $stat['items'][0]['statistics']['subscriberCount'];
+          $channelData['videos_count'] = $stat['items'][0]['statistics']['videoCount'];
+          $channelData['all_views_count'] = $stat['items'][0]['statistics']['viewCount'];
+          $json = file_get_contents('https://www.googleapis.com/youtube/v3/channels?key=' . $key . '&part=contentDetails&id=' . $id[4]);
+          $stat = json_decode($json, true);
+          $uploadPlaylistId = $stat['items'][0]['contentDetails']['relatedPlaylists']['uploads'];
+          $json = file_get_contents('https://www.googleapis.com/youtube/v3/search?key=' . $key . '&part=snippet&channelId=' . $id[4] . '&type=video&order=viewcount&playlistId=' . $uploadPlaylistId);
+          $stat = json_decode($json, true);
+          $channelData['top_video_name'] = mb_convert_encoding($stat['items'][0]['snippet']['title'],'utf-8');
+          $channelData['top_video_id'] = $stat['items'][0]['id']['videoId'];
+          $json = file_get_contents('https://www.googleapis.com/youtube/v3/videos?key=' . $key . '&part=statistics&id=' . $channelData['top_video_id']);
+          $stat = json_decode($json, true);
+          $channelData['top_video_views_count'] = $stat['items'][0]['statistics']['viewCount'];
+          $json = file_get_contents('https://www.googleapis.com/youtube/v3/playlists?key=' . $key . '&part=snippet,contentDetails&channelId=' . $id[4].'&maxResults=50');
+          $stat = json_decode($json, true);
+          $channelData['playlists_count'] = $stat['pageInfo']['totalResults'];
+          $playlists = $stat['items'];
+          while ($stat['nextPageToken']) {
+            $json = file_get_contents('https://www.googleapis.com/youtube/v3/playlists?key=' . $key . '&part=snippet,contentDetails&channelId=' . $id[4].'&maxResults=50&pageToken=' . $stat['nextPageToken']);
+            $stat = json_decode($json, true);
+            $playlists = array_merge($playlists, $stat['items']);
+          }
+          foreach ($playlists as $playlist) {
+            $channelData['playlists'] .= '(' . $playlist['contentDetails']['itemCount'] . ')' . mb_convert_encoding($playlist['snippet']['title'], 'utf-8') . PHP_EOL;
+          }
+          $channelData['playlists'] = substr($channelData['playlists'], 0, -1);
+          $channelData['playlists'] = addslashes($channelData['playlists']);
+          $channelData['tags'] = addslashes($channelData['tags']);
+          $channelData['name'] = addslashes($channelData['name']);
+          $channelData['top_video_name'] = addslashes($channelData['top_video_name']);
+          $query = mysqli_query($Connect, "INSERT INTO channels (`name`, `create_date`, `youtube_id`, `subscribers_count`, `tags`, `channel_create_date`, `videos_count`, `all_views_count`, `playlists_count`, `playlists`, `country`, `top_video_name` ,`top_video_id`, `top_video_views_count`, `list`) VALUES ('" . $channelData['name'] . "', '" . date('Y-m-d H:i:s') . "', '" . $channelData['youtube_id'] . "', '" . $channelData['subscribers_count'] . "', '" . $channelData['tags'] . "' , '".$channelData['channel_create_date']."', '".$channelData['videos_count']."', '".$channelData['all_views_count']."', '".$channelData['playlists_count']."', '".$channelData['playlists']."', '".$channelData['country']."', '".$channelData['top_video_name']."', '".$channelData['top_video_id']."', '".$channelData['top_video_views_count']."' , '".$list_id."')");
+          if (!$query) $error = true;
+          unset($channelData);
+        }
+      }
+    } else {
+      echo '{"status" : "error", "message" : "Ошибка записи в БД"}';
+    }
+    if ($error) {
+      echo '{"status" : "error", "message" : "Ошибка записи в БД"}';
+    } else {
+      echo '{"status" : "success", "message" : "Список успешно создан"}';
+    }
+  } else {
+    echo '{"status" : "error", "message" : "Пользователь не авторизован"}';
+  }
+?>

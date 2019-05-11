@@ -1,0 +1,9 @@
+<?
+$db  = Array(
+  'Host' => 'localhost',
+  'Login' => 'vuzappf7_yta',
+  'Password' => '*VxZ9AP&',
+  'Database' => 'vuzappf7_yta');
+
+$key = 'AIzaSyCY0ZRJfvwBcmFE-NFtaSzPhYHd1ftu0n4';
+?>

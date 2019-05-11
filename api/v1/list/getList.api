@@ -1,0 +1,16 @@
+<?
+require($_SERVER["DOCUMENT_ROOT"] . '/api/connect.api');
+require($_SERVER["DOCUMENT_ROOT"] . '/api/init.api');
+require($_SERVER["DOCUMENT_ROOT"] . '/api/check-user.api');
+
+if ($userStatus == 'allow') {
+  $result = Array('status' => 'success', 'object' => Array());
+  $query = mysqli_query($Connect, "SELECT * FROM channels WHERE list = '".intval($_POST['id'])."'");
+  while ($lists = mysqli_fetch_assoc($query)) {
+    array_push($result['object'], $lists);
+  }
+  echo json_encode($result, JSON_NUMERIC_CHECK);
+} else {
+  echo '{"status" : "error", "message" : "Пользователь не авторизован"}';
+}
+?>

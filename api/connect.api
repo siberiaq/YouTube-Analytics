@@ -1,0 +1,7 @@
+<?
+require($_SERVER["DOCUMENT_ROOT"] . '/api/config.api');
+$Connect = mysqli_connect($db['Host'], $db['Login'], $db['Password'], $db['Database']);
+if (!$Connect) {
+    die('Error connection: ' . mysql_error());
+}
+?>

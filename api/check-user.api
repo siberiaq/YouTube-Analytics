@@ -1,0 +1,19 @@
+<?
+if (empty($_COOKIE)) {
+  if ($_SERVER["REQUEST_URI"] != '/auth/') {
+    header('Location: '.getDomain().'/auth/');
+    exit;
+  }
+} else {
+  if ($_SERVER["REQUEST_URI"] == '/auth/') header('Location:http://'.$_SERVER['SERVER_NAME']);
+
+  $query = mysqli_query($Connect, "SELECT *, INET_NTOA(user_ip) FROM users WHERE user_id = '".intval($_COOKIE['id'])."' LIMIT 1");
+  $userdata = mysqli_fetch_assoc($query);
+
+  if(($userdata['user_hash'] !== $_COOKIE['hash']) or ($userdata['user_id'] !== $_COOKIE['id']) or (($userdata['user_ip'] !== $_SERVER['REMOTE_ADDR']) and ($userdata['user_ip'] !== "0"))) {
+      $userStatus = 'allow';
+  } else {
+      $userStatus = 'deny';
+  }
+}
+?>

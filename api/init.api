@@ -1,0 +1,31 @@
+<?
+//require_once './lib/google-api-php-client-2.2.2/vendor/autoload.php';
+
+//$client = new Google_Client();
+//$client->setApplicationName("YTA");
+//$client->setDeveloperKey("AIzaSyBqEaEidtktO0x0o1aCZrWxYgZSRpdvK8Q");
+
+function generateCode($length = 6) {
+    $chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHI JKLMNOPRQSTUVWXYZ0123456789";
+    $code = "";
+    $clen = strlen($chars) - 1;
+    while (strlen($code) < $length) {
+      $code .= $chars[mt_rand(0,$clen)];
+    }
+    return $code;
+}
+
+function getDomain() {
+  $url  = @( $_SERVER["HTTPS"] != 'on' ) ? 'http://'.$_SERVER["SERVER_NAME"] :  'https://'.$_SERVER["SERVER_NAME"];
+  $url .= ( $_SERVER["SERVER_PORT"] != 80 ) ? ":".$_SERVER["SERVER_PORT"] : "";
+  return $url;
+}
+
+function strContain($str,$substr) {
+  $result = strpos ($str, $substr);
+  if ($result === FALSE)
+    return false;
+  else
+    return true;   
+}
+?>
